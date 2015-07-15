@@ -14,6 +14,8 @@ All files include proper documentation explaining their details.
 
 The code implements all basic requirements in the project, plus the OMW functionality from the extra credits
 
+The extra functionality is tested using code shared by a student in the forums: https://discussions.udacity.com/t/test-cases-for-project-2-extra-credit/18699?u=alberto_1885411934
+
 ## Database structure
 This script file contains the sql commands to create the schema of the tournament database. The database is composed of two tables: 'players' and 'matches'. The former stores information about the registered players, and the latter about already finished matches between players.
 
