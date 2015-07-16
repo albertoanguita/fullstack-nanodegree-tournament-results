@@ -22,6 +22,7 @@
 
 
 -- tournament database creation and connection commands
+DROP DATABASE IF EXISTS tournament;
 CREATE DATABASE tournament;
 \c tournament;
 
@@ -90,4 +91,3 @@ CREATE VIEW scores AS
 CREATE VIEW scores_extended AS
   SELECT id, wins, looses, matches, (SELECT COALESCE(SUM(wins), 0) FROM wins LEFT JOIN matches ON wins.id = matches.winner WHERE matches.looser = scores.id) + (SELECT COALESCE(SUM(wins), 0) FROM wins LEFT JOIN matches ON wins.id = matches.looser WHERE matches.winner = scores.id) as opp_wins
     FROM scores;
-
