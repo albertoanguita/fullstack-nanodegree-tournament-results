@@ -1,75 +1,82 @@
 #!/usr/bin/env python
-# 
+#
 # tournament.py -- implementation of a Swiss-system tournament
 #
 
 import psycopg2
 
 
-def connect():
+def connect(database_name="tournament"):
     """Connect to the PostgreSQL database.  Returns a database connection."""
-    return psycopg2.connect("dbname=tournament")
-
+    try:
+        db = psycopg2.connect("dbname={}".format(database_name))
+        cursor = db.cursor()
+        return db, cursor
+    except:
+        print("Error: could not connect to the database {}"
+              .format(database_name))
 
 
 def deleteMatches():
     """Remove all the match records from the database."""
-    DB = connect()
-    cur = DB.cursor()
+    db, cur = connect()
     # to delete the matches, simply remove all data from the "matches" table
-    # using a "DELETE" command
-    cur.execute("delete from matches")
-    DB.commit()
-    DB.close()
+    # using a "TRUNCATE" command
+    query = "TRUNCATE matches;"
+    cur.execute(query)
+    db.commit()
+    db.close()
 
 
 def deletePlayers():
     """Remove all the player records from the database."""
-    DB = connect()
-    cur = DB.cursor()
+    db, cur = connect()
     # to delete the matches, simply remove all data from the "players" table
-    # using a "DELETE" command
-    cur.execute("delete from matches")
-    cur.execute("delete from players")
-    DB.commit()
-    DB.close()
+    # using a "TRUNCATE" command
+    query = "TRUNCATE matches;"
+    cur.execute(query)
+    query = "TRUNCATE players CASCADE;"
+    cur.execute(query)
+    db.commit()
+    db.close()
 
 
 def countPlayers():
     """Returns the number of players currently registered."""
-    DB = connect()
-    cur = DB.cursor()
+    db, cur = connect()
     # the number of players is given by the number of rows in the "players"
     # table. A "SELECT" command with a count operator returns this value
-    cur.execute("select count(*) as player_count from players")
+    query = "SELECT COUNT(*) AS player_count FROM players;"
+    cur.execute(query)
     count = cur.fetchone()[0]
-    DB.close()
+    db.close()
     return count
 
 
 def registerPlayer(name):
     """Adds a player to the tournament database.
-  
+
     The database assigns a unique serial id number for the player.  (This
     should be handled by your SQL database schema, not in your Python code.)
-  
+
     Args:
       name: the player's full name (need not be unique).
     """
-    DB = connect()
-    cur = DB.cursor()
+    db, cur = connect()
     # use an "INSERT" command to add the new player to the "players" table
     # player name is added properly, avoiding SQL injection attacks
-    cur.execute("insert into players(name) values(%s)", (name, ))
-    DB.commit()
-    DB.close()
+    query = "INSERT INTO players(name) VALUES(%s);"
+    param = (name,)
+    cur.execute(query, param)
+    db.commit()
+    db.close()
 
 
 def playerStandings():
     """Returns a list of the players and their win records, sorted by wins.
 
-    The first entry in the list should be the player in first place, or a player
-    tied for first place if there is currently a tie.
+    The first entry in the list should be the player in first place,
+    or a player tied for first place if there is currently a tie.
 
     Returns:
       A list of tuples, each of which contains (id, name, wins, matches):
@@ -78,19 +85,21 @@ def playerStandings():
         wins: the number of matches the player has won
         matches: the number of matches the player has played
     """
-    DB = connect()
-    cur = DB.cursor()
+    db, cur = connect()
     # players score is stored in the "scored_extended" view. We join this table
     # with "players", to have the players name too. the results are ordered by
     # number of wins (in descending order), and then by number of wins of
     # opponents of the player (also in descending order), to implement the
     # opponent match wins strategy for calculating scores
-    cur.execute("select players.id, players.name, scores_extended.wins, scores_extended.matches "
+    cur.execute("SELECT players.id, players.name, "
+                "       scores_extended.wins, scores_extended.matches "
                 "FROM players "
                 "JOIN scores_extended ON players.id = scores_extended.id "
-                "ORDER BY scores_extended.wins DESC, scores_extended.opp_wins DESC;")
-    result = [(str(row[0]), str(row[1]), int(row[2]), int(row[3])) for row in cur.fetchall()]
-    DB.close()
+                "ORDER BY scores_extended.wins DESC, "
+                "         scores_extended.opp_wins DESC;")
+    result = [(str(row[0]), str(row[1]), int(row[2]), int(row[3]))
+              for row in cur.fetchall()]
+    db.close()
     return result
 
 
@@ -101,22 +110,21 @@ def reportMatch(winner, loser):
       winner:  the id number of the player who won
       loser:  the id number of the player who lost
     """
-    DB = connect()
-    cur = DB.cursor()
+    db, cur = connect()
     # simply insert a new row in the "matches" table
-    cur.execute("insert into matches values(%s, %s)", (winner, loser))
-    DB.commit()
-    DB.close()
+    cur.execute("INSERT INTO matches VALUES(%s, %s)", (winner, loser))
+    db.commit()
+    db.close()
 
- 
+
 def swissPairings():
     """Returns a list of pairs of players for the next round of a match.
-  
+
     Assuming that there are an even number of players registered, each player
     appears exactly once in the pairings.  Each player is paired with another
     player with an equal or nearly-equal win record, that is, a player adjacent
     to him or her in the standings.
-  
+
     Returns:
       A list of tuples, each of which contains (id1, name1, id2, name2)
         id1: the first player's unique id
@@ -126,9 +134,9 @@ def swissPairings():
     """
     # the list of standings is extracted, using the appropriate method
     standings = playerStandings()
-    pairings = []
     # pairings are generated by taking pairs of adjacent elements from the
-    # standings list
-    for i in range(0, len(standings), 2):
-        pairings.append((standings[i][0], standings[i][1], standings[i + 1][0], standings[i + 1][1]))
-    return pairings
+    # standings list. We achieve this by zipping even and odd sublists
+    pairings = zip([(x[0], x[1]) for x in standings[0::2]],
+                   [(x[0], x[1]) for x in standings[1::2]])
+    # reformat the list elements so they are in a unique tuple
+    return [(x, y, z, t) for (x, y), (z, t) in pairings]
