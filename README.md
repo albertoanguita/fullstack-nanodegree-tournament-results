@@ -23,4 +23,6 @@ The file also includes the definition of four views for facilitating the retriev
 
 ## Testing
 
-To test the application, run the tournament_test.py file
+- Step 1: setup the tournament database by running the tournament.sql scripts in psql. This creates the database and its schema, including views
+- Step 2: run tournament_test.py in Python (2.7.9)
+
