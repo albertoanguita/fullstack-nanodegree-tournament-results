@@ -1,6 +1,12 @@
 # fullstack-nanodegree-tournament-results
 Full Stack Web Developer Nanodegree - Project 2: Tournament results
 
+
+```
+sudo apt-get update
+sudo apt-get upgrade
+```
+
 The repository contains the files corresponding to project 2: tournament result
 
 - tournament.sql: script file containing sql commands for creating the tournament database and its tables and views
